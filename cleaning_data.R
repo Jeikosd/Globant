@@ -8,6 +8,7 @@ library(glue)
 library(readxl)
 library(lubridate)
 library(readr)
+library(tidyr)
 
 ## dir to save the purchase card transactions
 fs::dir_create("data/")
@@ -46,10 +47,14 @@ purrr::map(.x = purchase_card_2, .f = function(x){
 # Example PCT_01_2016  -> purchase card transition january 2016
 cleaning_name <- function(x, out_dir){
   
-  datos <- read_xls("data/cusersfinainmndesktoppublish-copy-january-2017.xls")
-  datos <- read_xls(x)
+  # datos <- read_xls("data/cusersfinainmndesktoppublish-spend-sept-2017.xls")
+  # datos <- read_xls("data/cusersfinainmndesktoppublish-spend-sept-2017.xls", .name_repair = "minimal")
   
+  datos <- read_xls(x)
+  # unique_columns <- unique(colnames(datos))
+  print(x)
   datos <- datos %>% 
+    # dplyr::select(!!unique_columns) %>% 
     mutate(year = lubridate::year(`TRANS DATE`), 
            month = lubridate::month(`TRANS DATE`),
            day = lubridate::day(`TRANS DATE`),
@@ -63,11 +68,24 @@ cleaning_name <- function(x, out_dir){
            name_purchase_card = glue::glue("PCT_{year}_{month}.csv")) %>% 
     pull(name_purchase_card)
   
-  write_csv(x = datos, file = glue::glue("{out_dir}/{name_purchase_card}"))
+  number_columns <- length(colnames(datos))
   
+  verify_data <- tibble::tibble( file = "data/cusersfinainmndesktoppublish-spend-sept-2017.xls",
+                 columns = colnames(datos)) %>% 
+    mutate(ID = 1) %>%
+    tidyr::pivot_wider(id_cols = ID, names_from = columns, values_from = columns) %>% 
+    mutate(number_columns = number_columns)
+    
+  
+ 
+  # write_csv(x = datos, file = glue::glue("{out_dir}/{name_purchase_card}"))
+
+  return(verify_data)
 }
 xls_files <- list.files(path = "data/", pattern = "*.xls", full.names = T)
-purrr::map(.x = xls_files, .f = cleaning_name, out_dir = "data/cleaning/")
+check_columns <- purrr::map(.x = xls_files, .f = cleaning_name, out_dir = "data/cleaning/")
+check_columns <- check_columns %>% 
+  bind_rows()
 
 
 # cut-off date on the third day
