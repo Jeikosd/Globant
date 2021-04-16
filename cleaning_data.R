@@ -5,7 +5,9 @@ library(rvest)
 library(stringr)
 library(purrr)
 library(glue)
-library(open)
+library(readxl)
+library(lubridate)
+
 # "Spanish_Colombia.1252"
 Sys.setlocale("LC_TIME", "English")
 # dowload files
@@ -36,8 +38,7 @@ purrr::map(.x = purchase_card_2, .f = function(x){
 # cleaning name files
 # cut-off date on the third day
 
-library(readxl)
-library(lubridate)
+
 datos <- read_xls("data/cusersfinainmndesktoppublish-copy-january-2017.xls")
 datos <- read_xls("data/cusersfinainmndesktoppublish-spend-april-2017.xls")
 datos <- datos %>% 
@@ -62,7 +63,7 @@ datos %>%
   distinct(year, month, day, wday) %>% 
   dplyr::filter(month == 2)
 
-# purchase card transition
+# purchase card transactions
 ## Change to PCT_month_year
 # Example PCT_01_2016  -> purchase card transition january 2016
 datos <- read_xls("data/cusersfinainmndesktoppublish-copy-january-2017.xls")
