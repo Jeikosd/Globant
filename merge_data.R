@@ -6,7 +6,6 @@ library(readr)
 library(tibble)
 library(stringr)
 library(dplyr)
-library(glue)
 
 
 purchase_transactions <- list.files(path = "data/cleaning/", pattern = "PCT", full.names = T) %>% 
@@ -34,7 +33,6 @@ sequence_date <- seq.Date(from = init_last[1], to = init_last[2], by = "1 day") 
 all_data <- full_join(sequence_date, purchase_transactions, by = c("date" = "TRANS DATE"))
 
 write_csv(all_data, file = glue::glue("data/cleaning/sequence_purchase_transactions.csv"))
-
 
 
 
