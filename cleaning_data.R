@@ -72,8 +72,8 @@ cleaning_name <- function(x, out_dir){
   
   verify_data <- tibble::tibble( file = "data/cusersfinainmndesktoppublish-spend-sept-2017.xls",
                  columns = colnames(datos)) %>% 
-    mutate(ID = 1) %>%
-    tidyr::pivot_wider(id_cols = ID, names_from = columns, values_from = columns) %>% 
+    # mutate(ID = 1) %>%
+    tidyr::pivot_wider(id_cols = file, names_from = columns, values_from = columns) %>% 
     mutate(number_columns = number_columns)
     
   
@@ -86,7 +86,7 @@ xls_files <- list.files(path = "data/", pattern = "*.xls", full.names = T)
 check_columns <- purrr::map(.x = xls_files, .f = cleaning_name, out_dir = "data/cleaning/")
 check_columns <- check_columns %>% 
   bind_rows()
-
+write_csv(check_columns, "prueba.csv")
 
 # cut-off date on the third day
 
