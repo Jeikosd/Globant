@@ -8,9 +8,12 @@ library(glue)
 library(readxl)
 library(lubridate)
 
-# "Spanish_Colombia.1252"
+## dir to save the purchase card transactions
+fs::dir_create("data/")
+
+# "Spanish_Colombia.1252" my locale
 Sys.setlocale("LC_TIME", "English")
-# dowload files
+# download files
 
 webpage_url <- "https://data.birmingham.gov.uk/dataset/purchase-card-transactions"
 webpage <- rvest::read_html(webpage_url)
