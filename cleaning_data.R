@@ -99,7 +99,7 @@ make_cleaning <- function(x, keep, out_dir){
 
   # datos <- read_xls("data/cusersfinainmndesktoppublish-spend-sept-2017.xls")
   # datos <- read_xls("data/cusersfinainmndesktoppublish-spend-sept-2017.xls", .name_repair = "minimal")
-
+  Sys.setlocale("LC_TIME", "English")
   datos <- read_xls(x)
   # unique_columns <- unique(colnames(datos))
   print(x)
