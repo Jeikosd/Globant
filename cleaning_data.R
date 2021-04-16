@@ -76,8 +76,6 @@ cleaning_name <- function(x, out_dir){
     tidyr::pivot_wider(id_cols = file, names_from = columns, values_from = columns) %>% 
     mutate(number_columns = number_columns)
     
-  
- 
   # write_csv(x = datos, file = glue::glue("{out_dir}/{name_purchase_card}"))
 
   return(verify_data)
@@ -93,7 +91,39 @@ good_columns <- check_columns %>%
   select_if(function(x){!any(is.na(x))})
 
 write_csv(good_columns, "data/cleaning/complete_columns.csv")
+good_columns <- good_columns %>% 
+  dplyr::select(-file, -number_columns) %>%
+  colnames()
 
+make_cleaning <- function(x, keep, out_dir){
+
+  # datos <- read_xls("data/cusersfinainmndesktoppublish-spend-sept-2017.xls")
+  # datos <- read_xls("data/cusersfinainmndesktoppublish-spend-sept-2017.xls", .name_repair = "minimal")
+
+  datos <- read_xls(x)
+  # unique_columns <- unique(colnames(datos))
+  print(x)
+  datos <- datos %>% 
+    mutate(year = lubridate::year(`TRANS DATE`), 
+           month = lubridate::month(`TRANS DATE`),
+           day = lubridate::day(`TRANS DATE`),
+           wday = lubridate::wday(`TRANS DATE`, label = T)) %>% 
+    dplyr::select(!!keep)
+  
+  # Selecting the month with the most data to generate the file name
+  name_purchase_card <- datos %>% 
+    dplyr::count(year, month) %>% 
+    top_n(1, n) %>% 
+    mutate(month = sprintf("%.2d", month),
+           name_purchase_card = glue::glue("PCT_{year}_{month}.csv")) %>% 
+    pull(name_purchase_card)
+  
+  write_csv(x = datos, file = glue::glue("{out_dir}/{name_purchase_card}"))
+  
+  
+}
+
+purrr::map(.x = xls_files, .f = make_cleaning, keep = good_columns, out_dir = "data/cleaning/")
 
 # cut-off date on the third day
 
