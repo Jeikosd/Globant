@@ -53,8 +53,9 @@ cleaning_name <- function(x, out_dir){
   datos <- read_xls(x)
   # unique_columns <- unique(colnames(datos))
   print(x)
+  # la fecha quedó año mes
   datos <- datos %>% 
-    # dplyr::select(!!unique_columns) %>% 
+    mutate(`TRANS DATE` = ymd(`TRANS DATE`)) %>% 
     mutate(year = lubridate::year(`TRANS DATE`), 
            month = lubridate::month(`TRANS DATE`),
            day = lubridate::day(`TRANS DATE`),
@@ -104,6 +105,7 @@ make_cleaning <- function(x, keep, out_dir){
   # unique_columns <- unique(colnames(datos))
   print(x)
   datos <- datos %>% 
+    mutate(`TRANS DATE` = ymd(`TRANS DATE`)) %>% 
     mutate(year = lubridate::year(`TRANS DATE`), 
            month = lubridate::month(`TRANS DATE`),
            day = lubridate::day(`TRANS DATE`),
