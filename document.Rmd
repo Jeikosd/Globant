@@ -1,0 +1,51 @@
+---
+title: "Globant technical test"
+author: "Jeison Mesa"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: pdf_document
+header-includes:
+   - \usepackage[spanish,es-tabla]{babel}   
+   - \usepackage[utf8]{inputenc}
+   - \usepackage{float}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, load_data, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(glue)
+library(scales)
+library(forcats)
+
+clean_data <-  read_csv(file = glue::glue("data/cleaning/sequence_purchase_transactions.csv"))
+
+```
+
+## Introduction
+
+In the workflow for data science professionals, it is important to achieve process automation. Automating processes allows to control human errors made by performing tasks manually. It is proposed to download files using web scraping. In this case, R is connected to the information available for each of the data sets in the web page. It is to recognise the structure of the information. It was possible to identify two types of data structure xls and csv files, for the set of csv files a totally different pattern was found to the xls format files, for this situation only the xls format files were keep.
+The next step is to have a logical file name. In this case, having files for different months, it is proposed to work with the following format "PCT_year_month" for all the files. This is because the structure presented on the website seemed rather "messy".
+
+The additional step is done to identify the columns that are found for all the files. Resulting in the following variables: 
+
+```{r, see_variables, cache=TRUE}
+colnames(clean_data)
+```
+
+As can be seen, a date column has been generated in ymd format; in addition to this, year, month and day columns were generated separately in order to have a more universal date format, it is also proposed to calculate the day of the week. In economics, it is usual to find different relationships for weekdays compared to weekends in financial variables. 
+
+## Quality Control
+
+The inferences that can be by a statistical model are largely influenced by the quality of the information, i.e. we must be able to guarantee that the information was verified and validated; for this purpose the following is generally checked:
+
+1. __Problems associated with the scale of the variable__ 
+
+Regardless of the type of software that we want to use, it is necessary that at the moment of loading the information those variables that by their typology are strictly numerical, the software can identify it because if we adjust a statistical model with a variable that is numerical and the software detects it as categorical we will reach erroneous conclusions (this is only an example of the many cases that can occur) or vice versa when giving numerical values to categorical variables the software detects them as numerical, in this case it is necessary to perform a transformation.
+
+2. __Missing values__ 
+
+It is important to be able to check which variables have a high percentage of missing values, since many of the optimisations of statistical models require having the complete data matrix. In this sense, if the information provided presents missing values for some of the variables, a process of imputation of values must be carried out (by some statistical technique ML, pca + NIPALS, KNN, etc...). In Figure \ref{fig:missing} we observe that the information provided has no missing value problems.
