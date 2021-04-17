@@ -6,6 +6,7 @@ library(scales)
 library(forcats)
 library(naniar)
 library(patchwork)
+library(stringr)
 
 
 clean_data <-  read_csv(file = glue::glue("data/cleaning/sequence_purchase_transactions.csv"))
@@ -82,13 +83,53 @@ merchant_name_sum <- clean_data %>%
   summarise(sum_gross_amt = sum(`ORIGINAL GROSS AMT`, na.rm = T)) %>% 
   arrange(desc(sum_gross_amt)) %>% 
   left_join(prop_merchant_name, by = "MERCHANT NAME") %>% 
-  top_n(n = 20, wt = sum_gross_amt)
+  top_n(n = 20, wt = sum_gross_amt) %>% 
+  mutate(prop = prop/100)
 
 ggplot()+
   geom_col(data = merchant_name_sum, aes(x = fct_reorder(`MERCHANT NAME`,
                                                          sum_gross_amt, .desc = F), y = sum_gross_amt))+
-  coord_flip()
+  coord_flip()+
+  geom_text(data = merchant_name_sum, aes(x = fct_reorder(`MERCHANT NAME`,
+                                                          sum_gross_amt, .desc = F),
+                                          label = scales::percent(prop),
+                 y= sum_gross_amt), vjust = .5, hjust = -0.1)+
+  # ggplot2::lims(y = c(0, 800000))+
+  scale_y_continuous(labels = comma, limits = c(0, 8000000))+
+  theme_bw()+
+  labs(y = "Original Gross AMT £", x = "MERCHANT NAME")
 
+## sum by amazon
+prop_merchant_name <- clean_data %>% 
+  mutate(condition = str_detect(`MERCHANT NAME`, fixed('amazon', ignore_case=TRUE))) %>% 
+  mutate(`MERCHANT NAME` = if_else(condition == TRUE, "amazon", `MERCHANT NAME`)) %>% 
+  count(`MERCHANT NAME`) %>% 
+  filter(!is.na(`MERCHANT NAME`)) %>% 
+  mutate(prop = n/sum(n)*100) %>% 
+  arrange(desc(n))
+
+merchant_amazon <- clean_data %>% 
+  mutate(condition = str_detect(`MERCHANT NAME`, fixed('amazon', ignore_case=TRUE))) %>% 
+  mutate(`MERCHANT NAME` = if_else(condition == TRUE, "amazon", `MERCHANT NAME`)) %>% 
+  group_by(`MERCHANT NAME`) %>% 
+  summarise(sum_gross_amt = sum(`ORIGINAL GROSS AMT`, na.rm = T)) %>% 
+  arrange(desc(sum_gross_amt)) %>% 
+  left_join(prop_merchant_name, by = "MERCHANT NAME") %>% 
+  top_n(n = 20, wt = sum_gross_amt) %>% 
+  mutate(prop = prop/100)
+
+ggplot()+
+  geom_col(data = merchant_amazon, aes(x = fct_reorder(`MERCHANT NAME`,
+                                                         sum_gross_amt, .desc = F), y = sum_gross_amt))+
+  coord_flip()+
+  geom_text(data = merchant_amazon, aes(x = fct_reorder(`MERCHANT NAME`,
+                                                          sum_gross_amt, .desc = F),
+                                          label = scales::percent(round(prop, 3)),
+                                          y= sum_gross_amt), vjust = .5, hjust = -0.1)+
+  # ggplot2::lims(y = c(0, 800000))+
+  scale_y_continuous(labels = comma, limits = c(0, 8000000))+
+  theme_bw()+
+  labs(y = "Original Gross AMT £", x = "MERCHANT NAME")
 
 clean_data %>% 
   group_by(`TRANS CAC DESC 1`) %>% 

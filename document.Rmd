@@ -22,6 +22,7 @@ library(glue)
 library(scales)
 library(forcats)
 library(naniar)
+library(stringr)
 
 clean_data <-  read_csv(file = glue::glue("data/cleaning/sequence_purchase_transactions.csv"))
 
@@ -52,7 +53,7 @@ Regardless of the type of software that we want to use, it is necessary that at 
 
 It is important to be able to check which variables have a high percentage of missing values, since many of the optimisations of statistical models require having the complete data matrix. In this sense, if the information provided presents missing values for some of the variables, a process of imputation of values must be carried out (by some statistical technique ML, pca + NIPALS, KNN, etc...). But it is important to recognize the adjacent stochastic process that arises from credit card transactions. In essence, it is possible to consider a time series with irregular observations over time [@eyheramendy_elorrieta_palma_2016]. This is a new approach and can be analyzed by kalman filters and state space representation. In my master thesis I am proposing a regression approach with autocorrelated errors and irregular observations over time, such as credit transactions.
 
-```{r, missing, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE, fig.cap = "Valores Faltantes", out.width='75%'}
+```{r, missing, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE, fig.cap = "Valores Faltantes", out.width='50%', fig.align="center"}
 gg_miss_var(clean_data, show_pct = T) + 
   labs(y = "% Missing Values") +
   ggtitle(label = "")
@@ -66,7 +67,7 @@ But it is important to recognize the adjacent stochastic process that arises fro
 
 In many cases we cannot assume that the information is correct, since there may be typing problems or problems due to "outliers" (e.g. imagine a negative precipitation is not possible). When the problem related to the outlier is trivial, i.e. we can know with certainty that it is a value that cannot occur, we can choose to induce a missing value for that data. On the other hand, in order to identify possible outliers it is necessary to use descriptive or inferential statistical techniques; for the descriptive option a box plot can be performed and for the inferential case a probability distribution can be fitted and those values which are not under the distribution curve can be determined. 
 
-```{r, boxplot, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE, fig.cap = "Gross Outlier Detection", out.width='50%'}
+```{r, boxplot, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE, fig.cap = "Gross Outlier Detection", out.width='50%', fig.align="center"}
 
 ggplot()+
   geom_boxplot(data = clean_data, aes(x = "", y = `ORIGINAL GROSS AMT`))+
@@ -80,7 +81,7 @@ The Figure \ref{fig:boxplot} shows possible outliers for some transactions. In t
 
 Why is it necessary to develop a deeper analysis? It is necessary because we cannot consider outliers under the assumption of the interquartile ranges of the boxplot. Other types of outlier distributions such as the Gumbel distribution or non-parametric methods can be considered.
 
-```{r, time_gross, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE, fig.cap = "Time Serie Gross AMT", out.width='50%'}
+```{r, time_gross, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE, fig.cap = "Time Serie Gross AMT", out.width='50%', fig.align="center"}
 
 imputeTS::ggplot_na_distribution(
   x = clean_data$`ORIGINAL GROSS AMT`, 
@@ -93,5 +94,81 @@ imputeTS::ggplot_na_distribution(
 ```
 
 The figure \ref{fig:time_gross} shows the dynamics associated with the transactions carried out. In particular, some rather "strange" points can be observed according to the records. The red areas indicate two cases: no transactions were made or no information was found for those periods. 
+
+Now it is necessary to perform descriptive statistics that provide valuable information when generating a statistical model. 
+
+The most relevant results are shown below.
+
+
+```{r, gross_merchan, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE, fig.cap = "Activity in credit card transaction (percentages are the proportion of the number of times the card was used for the particular merchant, the bars indicate the amount of money used)", out.width='75%', fig.align="center"}
+
+prop_merchant_name <- clean_data %>% 
+  count(`MERCHANT NAME`) %>% 
+  filter(!is.na(`MERCHANT NAME`)) %>% 
+  mutate(prop = n/sum(n)*100) %>% 
+  arrange(desc(n))
+
+merchant_name_sum <- clean_data %>% 
+  group_by(`MERCHANT NAME`) %>% 
+  summarise(sum_gross_amt = sum(`ORIGINAL GROSS AMT`, na.rm = T)) %>% 
+  arrange(desc(sum_gross_amt)) %>% 
+  left_join(prop_merchant_name, by = "MERCHANT NAME") %>% 
+  top_n(n = 20, wt = sum_gross_amt) %>% 
+  mutate(prop = prop/100)
+
+ggplot()+
+  geom_col(data = merchant_name_sum, aes(x = fct_reorder(`MERCHANT NAME`,
+                                                         sum_gross_amt, .desc = F), y = sum_gross_amt))+
+  coord_flip()+
+  geom_text(data = merchant_name_sum, aes(x = fct_reorder(`MERCHANT NAME`,
+                                                          sum_gross_amt, .desc = F),
+                                          label = scales::percent(round(prop, 3)),
+                 y= sum_gross_amt), vjust = .5, hjust = -0.1)+
+  # ggplot2::lims(y = c(0, 800000))+
+  scale_y_continuous(labels = comma, limits = c(0, 8000000))+
+  theme_bw()+
+  labs(y = "Original Gross AMT £", x = "MERCHANT NAME")
+
+```
+
+The Figure \ref{fig:gross_merchan} shows that the client for which the most money was spent was "the furnishing service" but not as many transactions were recorded as in the case of "travelodge gb0000". It is also possible to look at several transactions for amazon but different divisions within amazon, now we can aggregate for the amazon category (additionally if we have a team it is possible to collect other variables).
+
+```{r, gross_merchan_amazon, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE, fig.cap = "Activity in credit card transaction (percentages are the proportion of the number of times the card was used for the particular merchant, the bars indicate the amount of money used) (Amazon)", out.width='75%', fig.align="center"}
+
+prop_merchant_name <- clean_data %>% 
+  mutate(condition = str_detect(`MERCHANT NAME`, fixed('amazon', ignore_case=TRUE))) %>% 
+  mutate(`MERCHANT NAME` = if_else(condition == TRUE, "amazon", `MERCHANT NAME`)) %>% 
+  count(`MERCHANT NAME`) %>% 
+  filter(!is.na(`MERCHANT NAME`)) %>% 
+  mutate(prop = n/sum(n)*100) %>% 
+  arrange(desc(n))
+
+merchant_amazon <- clean_data %>% 
+  mutate(condition = str_detect(`MERCHANT NAME`, fixed('amazon', ignore_case=TRUE))) %>% 
+  mutate(`MERCHANT NAME` = if_else(condition == TRUE, "amazon", `MERCHANT NAME`)) %>% 
+  group_by(`MERCHANT NAME`) %>% 
+  summarise(sum_gross_amt = sum(`ORIGINAL GROSS AMT`, na.rm = T)) %>% 
+  arrange(desc(sum_gross_amt)) %>% 
+  left_join(prop_merchant_name, by = "MERCHANT NAME") %>% 
+  top_n(n = 20, wt = sum_gross_amt) %>% 
+  mutate(prop = prop/100)
+
+ggplot()+
+  geom_col(data = merchant_amazon, aes(x = fct_reorder(`MERCHANT NAME`,
+                                                         sum_gross_amt, .desc = F), y = sum_gross_amt))+
+  coord_flip()+
+  geom_text(data = merchant_amazon, aes(x = fct_reorder(`MERCHANT NAME`,
+                                                          sum_gross_amt, .desc = F),
+                                          label = scales::percent(round(prop, 3)),
+                                          y= sum_gross_amt), vjust = .5, hjust = -0.1)+
+  # ggplot2::lims(y = c(0, 800000))+
+  scale_y_continuous(labels = comma, limits = c(0, 8000000))+
+  theme_bw()+
+  labs(y = "Original Gross AMT £", x = "MERCHANT NAME") +
+  ggtitle("With all amazon's divisions in one")
+
+```
+
+The Figure \ref{fig:gross_merchan_amazon} shows that amazon moved up in the ranking, but the associated spend per transaction is still higher for the "the furnishing service" category. This analysis can be extended to other variables. 
 
 ## References
