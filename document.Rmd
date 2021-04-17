@@ -232,6 +232,76 @@ clean_data %>%
 
 The Table \ref{tab:wday} shows something very important, the transactions are being made on weekdays, since there is little use on weekends. This may indicate the fact that the most of the transactions are for "Equip Operational" as these are being made on weekdays.
 
+## Model Analysis
+
+In many data anlaysis tasks, outlier detection plays an important role in modelling, inference, and even data processing because otuliers could adversely lead to model misspecification, biased parameter estimation, and poor predictions. The original outlier detection methods were arbitrary like using boxplot analys (interquartile range). But recognizing the pattern of transactions, outlier analysis can be performed with probability distributions for extreme values such as the gumbel distribution.
+
+```{r, model_data, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE}
+library(readr)
+library(glue)
+library(FactoMineR)
+library(tidyr)
+library(factoextra)
+library(sparklyr)
+library(dplyr)
+library(caret)
+library(tidymodels)
+# library(data.table)
+library(C50)
+library(parsnip)
+library(ranger)
+library(ggpubr)
+library(skimr)
+library(extRemes)
+
+
+clean_data <-  read_csv(file = glue::glue("data/cleaning/sequence_purchase_transactions.csv")) %>% 
+  mutate(week_type = case_when(wday == "Sat" ~ "weekend",
+                               wday == "Sun" ~ "weekend",
+                               TRUE ~ "Week")) %>% 
+  dplyr::select(-wday)
+names(clean_data) <- gsub(" ", "_", names(clean_data))
+
+clean_data <- clean_data %>% 
+  mutate(type = case_when(ORIGINAL_GROSS_AMT >0 ~ "purchase",
+                          ORIGINAL_GROSS_AMT <=0 ~ "return"))
+
+
+# Hampel filter
+
+lower_bound <- median(clean_data$ORIGINAL_GROSS_AMT, na.rm = T) - 3 * mad(clean_data$ORIGINAL_GROSS_AMT, 
+                                                                          constant = 1, na.rm = T)
+
+upper_bound <- median(clean_data$ORIGINAL_GROSS_AMT, na.rm = T) + 3 * mad(clean_data$ORIGINAL_GROSS_AMT, 
+                                                                          constant = 1, na.rm = T)
+                                                                          
+                                                                          
+complete_data <- clean_data %>% 
+  mutate(condition = case_when(ORIGINAL_GROSS_AMT <= lower_bound ~ "outlier", 
+                               ORIGINAL_GROSS_AMT >= upper_bound ~ "outlier",
+                               TRUE ~ "normal")) %>% 
+  drop_na()
+
+
+```
+
+```{r, gumbel, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE, fig.cap = "Gumbel", out.width='75%', fig.align="center"}
+
+fit <- fevd(complete_data$ORIGINAL_GROSS_AMT, type = "Gumbel")
+plot(fit, type = "density", main = "Empirical density vs estimated Gumbel distribution")
+```
+
+Values are concentrated around low amounts (Figure \ref{fig:gumbel}). Therefore, large amounts of money used in transactions can be considered as fraud problems. Additionally, it is possible to use the "Hampel filter" metric to determine the bands in which possible outliers are found (this metric is useful as it is a non-parametric method) and onsists of considering as outliers the values outside the interval $(I)$ formed by the median, plus or minus 3 median absolute deviations.
+
+
+```{r, Hampel, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=T}
+lower_bound
+upper_bound 
+   
+```
+
+Values below `r lower_bound` and values above `r upper_bound` are considered "outliers" which represent information different from the information expected to be found. For now they will be considered as possible outliers, but we will adjust decision trees to contrast the fitted values of the model with the possible leverage points of the line. In regression analysis, leverage points cause poor modeling. In this sense those leverage points will be considered to be outside the expected value of the distribution.
+
 
 
 ## References
