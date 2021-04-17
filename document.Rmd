@@ -23,6 +23,8 @@ library(scales)
 library(forcats)
 library(naniar)
 library(stringr)
+library(knitr)
+library(kableExtra)
 
 clean_data <-  read_csv(file = glue::glue("data/cleaning/sequence_purchase_transactions.csv"))
 
@@ -170,5 +172,66 @@ ggplot()+
 ```
 
 The Figure \ref{fig:gross_merchan_amazon} shows that amazon moved up in the ranking, but the associated spend per transaction is still higher for the "the furnishing service" category. This analysis can be extended to other variables. 
+
+```{r, trans_dec_1, warning=FALSE, cache=TRUE, eval=TRUE, message =FALSE, fig.align='center',  echo=FALSE}
+
+clean_data %>% 
+  count(`TRANS CAC DESC 1`) %>% 
+  filter(!is.na(`TRANS CAC DESC 1`)) %>% 
+  mutate(prop = round(n/sum(n)*100, 2)) %>%
+  mutate(prop = glue("{prop}%")) %>% 
+  arrange(desc(n)) %>% 
+  top_n(n = 10, wt =  n) %>% 
+  kable(caption = 'Sector top 10', format="latex") %>%
+  kable_styling(latex_options = "hold_position")
+```
+
+The Table \ref{tab:trans_dec_1} shows that the sector with the highest transaction is "Equip Operational". In addition, another important use of the card is for "Vehicle Fuel" and "Purchases Food", which represent a person's daily expenses. 
+
+Other important descriptive statistics are included
+
+```{r, trans_var, warning=FALSE, cache=TRUE, eval=TRUE, message =FALSE, fig.align='center',  echo=FALSE}
+
+clean_data %>% 
+  count(`TRANS VAT DESC`) %>% 
+  filter(!is.na(`TRANS VAT DESC`)) %>% 
+  mutate(prop = round(n/sum(n)*100, 2)) %>% 
+  arrange(desc(n)) %>%
+  mutate(prop = glue("{prop}%")) %>%  
+  kable(caption = 'TRANS VAT DESC top 10', format="latex") %>%
+  kable_styling(latex_options = "hold_position")
+```
+
+
+```{r, trans_cac_2, warning=FALSE, cache=TRUE, eval=TRUE, message =FALSE, fig.align='center',  echo=FALSE}
+
+clean_data %>% 
+  count(`TRANS CAC DESC 2`) %>% 
+  filter(!is.na(`TRANS CAC DESC 2`)) %>% 
+  mutate(prop = round(n/sum(n)*100, 2)) %>% 
+  arrange(desc(n)) %>% 
+  top_n(n = 10, wt =  n) %>%
+  mutate(prop = glue("{prop}%")) %>% 
+  kable(caption = 'TRANS CAC DESC 2 top 10', format="latex") %>%
+  kable_styling(latex_options = "hold_position")
+```
+
+
+```{r, wday, warning=FALSE, cache=TRUE, eval=TRUE, message =FALSE, fig.align='center',  echo=FALSE}
+
+clean_data %>% 
+  count(wday) %>% 
+  filter(!is.na(wday)) %>% 
+  mutate(prop = round(n/sum(n)*100, 2)) %>% 
+  arrange(desc(n)) %>% 
+  top_n(n = 10, wt =  n) %>%
+  mutate(prop = glue("{prop}%")) %>% 
+  kable(caption = 'Day of the week for the transaction', format="latex") %>%
+  kable_styling(latex_options = "hold_position")
+```
+
+The Table \ref{tab:wday} shows something very important, the transactions are being made on weekdays, since there is little use on weekends. This may indicate the fact that the most of the transactions are for "Equip Operational" as these are being made on weekdays.
+
+
 
 ## References

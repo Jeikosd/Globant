@@ -19,3 +19,7 @@ The
 [dataset](https://data.birmingham.gov.uk/dataset/purchase-card-transactions)
 to develop the test is a collection of purchase card transactions for
 the Birmingham City Council.
+
+    ├── cleaning_data.R
+    ├── merge_data.R
+    ├── analysis.R

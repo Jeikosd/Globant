@@ -118,6 +118,14 @@ merchant_amazon <- clean_data %>%
   top_n(n = 20, wt = sum_gross_amt) %>% 
   mutate(prop = prop/100)
 
+## 
+clean_data %>% 
+  count(`TRANS CAC DESC 1`) %>% 
+  filter(!is.na(`TRANS CAC DESC 1`)) %>% 
+  mutate(prop = n/sum(n)*100) %>% 
+  arrange(desc(n)) %>% 
+  top_n(n = 10, wt =  n)
+
 ggplot()+
   geom_col(data = merchant_amazon, aes(x = fct_reorder(`MERCHANT NAME`,
                                                          sum_gross_amt, .desc = F), y = sum_gross_amt))+
