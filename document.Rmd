@@ -3,8 +3,9 @@ title: "Globant technical test"
 author: "Jeison Mesa"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: pdf_document
+bibliography: reference.bib
+biblio-style: apalike
 header-includes:
-   - \usepackage[spanish,es-tabla]{babel}   
    - \usepackage[utf8]{inputenc}
    - \usepackage{float}
 ---
@@ -20,6 +21,7 @@ library(ggplot2)
 library(glue)
 library(scales)
 library(forcats)
+library(naniar)
 
 clean_data <-  read_csv(file = glue::glue("data/cleaning/sequence_purchase_transactions.csv"))
 
@@ -48,4 +50,48 @@ Regardless of the type of software that we want to use, it is necessary that at 
 
 2. __Missing values__ 
 
-It is important to be able to check which variables have a high percentage of missing values, since many of the optimisations of statistical models require having the complete data matrix. In this sense, if the information provided presents missing values for some of the variables, a process of imputation of values must be carried out (by some statistical technique ML, pca + NIPALS, KNN, etc...). In Figure \ref{fig:missing} we observe that the information provided has no missing value problems.
+It is important to be able to check which variables have a high percentage of missing values, since many of the optimisations of statistical models require having the complete data matrix. In this sense, if the information provided presents missing values for some of the variables, a process of imputation of values must be carried out (by some statistical technique ML, pca + NIPALS, KNN, etc...). But it is important to recognize the adjacent stochastic process that arises from credit card transactions. In essence, it is possible to consider a time series with irregular observations over time [@eyheramendy_elorrieta_palma_2016]. This is a new approach and can be analyzed by kalman filters and state space representation. In my master thesis I am proposing a regression approach with autocorrelated errors and irregular observations over time, such as credit transactions.
+
+```{r, missing, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE, fig.cap = "Valores Faltantes", out.width='75%'}
+gg_miss_var(clean_data, show_pct = T) + 
+  labs(y = "% Missing Values") +
+  ggtitle(label = "")
+```
+
+
+Assuming that traditional methods will be used, the greatest concentration of missing data is found in the "TRANS VAT DESC" variable (Figure \ref{fig:missing}), and for this reason it will not be used in the statistical inferences to be developed. 
+But it is important to recognize the adjacent stochastic process that arises from credit card transactions. In essence, one can consider a time series with irregular observations over time. 
+
+3. __Problems due to the Characteristic of your Variables__.
+
+In many cases we cannot assume that the information is correct, since there may be typing problems or problems due to "outliers" (e.g. imagine a negative precipitation is not possible). When the problem related to the outlier is trivial, i.e. we can know with certainty that it is a value that cannot occur, we can choose to induce a missing value for that data. On the other hand, in order to identify possible outliers it is necessary to use descriptive or inferential statistical techniques; for the descriptive option a box plot can be performed and for the inferential case a probability distribution can be fitted and those values which are not under the distribution curve can be determined. 
+
+```{r, boxplot, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE, fig.cap = "Gross Outlier Detection", out.width='50%'}
+
+ggplot()+
+  geom_boxplot(data = clean_data, aes(x = "", y = `ORIGINAL GROSS AMT`))+
+  theme_bw()+
+  labs(y = "Original Gross AMT £")
+
+```
+
+
+The Figure \ref{fig:boxplot} shows possible outliers for some transactions. In this case we have a record that may be due to a return of around £5000000 and a value per purchase of more than £250000. These are points that we will later evaluate if they can truly be considered as outliers or fraud issues. 
+
+Why is it necessary to develop a deeper analysis? It is necessary because we cannot consider outliers under the assumption of the interquartile ranges of the boxplot. Other types of outlier distributions such as the Gumbel distribution or non-parametric methods can be considered.
+
+```{r, time_gross, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE, fig.cap = "Time Serie Gross AMT", out.width='50%'}
+
+imputeTS::ggplot_na_distribution(
+  x = clean_data$`ORIGINAL GROSS AMT`, 
+  x_axis_labels = clean_data$date,
+  size_points = 1
+) +
+  theme_bw()+
+  labs(y = "Original Gross AMT £", x = "Date")
+
+```
+
+The figure \ref{fig:time_gross} shows the dynamics associated with the transactions carried out. In particular, some rather "strange" points can be observed according to the records. The red areas indicate two cases: no transactions were made or no information was found for those periods. 
+
+## References

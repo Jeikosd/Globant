@@ -4,9 +4,15 @@ library(ggplot2)
 library(glue)
 library(scales)
 library(forcats)
+library(naniar)
+library(patchwork)
 
 
 clean_data <-  read_csv(file = glue::glue("data/cleaning/sequence_purchase_transactions.csv"))
+
+gg_miss_var(clean_data, show_pct = T) + 
+  labs(y = "% Missing Values") +
+  ggtitle(label = "")
 
 clean_data %>% 
   head() %>% 
@@ -52,31 +58,22 @@ ggplot()+
   theme_bw()+
   labs(y = "Original Gross AMT £")
 
-ggplot(clean_data) +
-  aes(x = `ORIGINAL GROSS AMT`) +
-  geom_histogram(fill = "#0c4c8a") +
-  theme_minimal()
+# ggplot(clean_data) +
+#   aes(x = `ORIGINAL GROSS AMT`) +
+#   geom_histogram(fill = "#0c4c8a") +
+#   theme_minimal()
 
 # Estandaricemos los datos de las transacciones para ganar mayor interpretabilidad
-
-clean_data <- clean_data %>% 
-  mutate(stand_gross = scale(`ORIGINAL GROSS AMT`))
-
-
-# Nota no sirvió para un carajo
-ggplot()+
-  geom_boxplot(data = clean_data, aes(x = "", y = stand_gross))+
-  theme_bw()+
-  labs(y = "Standarized Gross")
 
 ggplot() +
   geom_line(data = clean_data, aes(x = date, y = `ORIGINAL GROSS AMT`, group = 1))
 
 imputeTS::ggplot_na_distribution(
   x = clean_data$`ORIGINAL GROSS AMT`, 
-  x_axis_labels = all_data$date,
+  x_axis_labels = clean_data$date,
   size_points = 1
-) 
+) +
+  theme_bw()
 
 ## Cual es la de mayor recaudo por nombre del comerciante
 
