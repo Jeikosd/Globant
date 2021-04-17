@@ -236,7 +236,7 @@ The Table \ref{tab:wday} shows something very important, the transactions are be
 
 In many data anlaysis tasks, outlier detection plays an important role in modelling, inference, and even data processing because otuliers could adversely lead to model misspecification, biased parameter estimation, and poor predictions. The original outlier detection methods were arbitrary like using boxplot analys (interquartile range). But recognizing the pattern of transactions, outlier analysis can be performed with probability distributions for extreme values such as the gumbel distribution.
 
-```{r, model_data, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE}
+```{r, model_data, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=T}
 library(readr)
 library(glue)
 library(FactoMineR)
@@ -246,7 +246,6 @@ library(sparklyr)
 library(dplyr)
 library(caret)
 library(tidymodels)
-# library(data.table)
 library(C50)
 library(parsnip)
 library(ranger)
@@ -300,7 +299,113 @@ upper_bound
    
 ```
 
-Values below `r lower_bound` and values above `r upper_bound` are considered "outliers" which represent information different from the information expected to be found. For now they will be considered as possible outliers, but we will adjust decision trees to contrast the fitted values of the model with the possible leverage points of the line. In regression analysis, leverage points cause poor modeling. In this sense those leverage points will be considered to be outside the expected value of the distribution.
+Values below `r lower_bound` and values above `r upper_bound` are considered "outliers" which represent information different from the information expected to be found. For now they will be considered as possible outliers, but we will adjust decision trees model to contrast the fitted values of the model with the possible leverage points of the line. In regression analysis, leverage points cause poor modeling. In this sense those leverage points will be considered to be outside the expected value of the distribution.
+
+__Description__
+
+The term machine learning encompasses the set of algorithms that identify patterns in data and create structures (models) that represent them. Once the models have been generated, they can be used to predict information about facts or events that have not yet been observed. It is important to remember that machine learning systems are only able to memorize patterns that are present in the data they are trained on, so they can only recognize what they have seen before. By using systems trained with past data to predict the future, it is assumed that the behavior will be the same in the future, which is not always the case.
+
+__Modelling Stages__
+
+1. Preparring the strategy for evaluating the model: separate the observations into a training set, a validation (or cross-validation) set and a test set. It is very important to ensure that no information from the test set is involved in the model training process.
+
+2. Preprocessing the data: apply the necessary transformations so that the data can be interpreted by the selected machine learning algorithm.
+
+3. Adjust a first model capable of overcoming minimum results.
+
+4. Gradually improve the model by incorporating-creating new variables or optimizing the hyperparameters.
+
+5. Evaluating the capacity of the final model with the test set to have an estimate of the capacity of the model when predicting new observations.
+
+6. Train the final model with all available data.
+
+The [Tidymodels](https://www.tidymodels.org) environment will be used for modeling development. Tidymodels is an interface that unifies under a single framework hundreds of functions from different packages, greatly facilitating all stages of preprocessing, training, optimization and validation of predictive models.
+
+```{r, model_tree, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=T}
+
+split_inicial <- initial_split(
+  data   = complete_data,
+  prop   = 0.8,
+  strata = ORIGINAL_GROSS_AMT
+)
+datos_train <- training(split_inicial)
+datos_test  <- testing(split_inicial)
+
+transformer <- recipe(
+  formula = ORIGINAL_GROSS_AMT ~ TRANS_VAT_DESC+TRANS_CAC_CODE_3+TRANS_CAC_CODE_1+week_type+condition,
+  data =  datos_train
+) %>%
+  step_naomit(all_predictors()) %>%
+  step_nzv(all_predictors()) %>%
+  step_center(all_numeric(), -all_outcomes()) %>%
+  step_scale(all_numeric(), -all_outcomes()) %>%
+  step_dummy(all_nominal(), -all_outcomes())
+
+
+transformer_fit <- prep(transformer)
+
+# The transformations are applied to the training and test set.
+
+datos_train_prep <- bake(transformer_fit, new_data = datos_train)
+datos_test_prep  <- bake(transformer_fit, new_data = datos_test)
+
+glimpse(datos_train_prep)
+
+modelo_tree <- decision_tree(mode = "regression") %>%
+  set_engine(engine = "rpart")
+modelo_tree
+
+response_variable <- "ORIGINAL_GROSS_AMT"
+
+predictor_variables <- setdiff(colnames(datos_train_prep), response_variable)
+
+modelo_tree_fit <- modelo_tree %>%
+  fit_xy(
+    x = datos_train_prep[, predictor_variables],
+    y = datos_train_prep[[response_variable]]
+  )
+
+modelo_tree_fit$fit
+
+cv_folds <- vfold_cv(
+  data    = datos_train,
+  v       = 5,
+  repeats = 10,
+  strata  = ORIGINAL_GROSS_AMT
+)
+head(cv_folds)
+
+modelo_tree <- decision_tree(mode = "regression") %>%
+  set_engine(engine = "rpart")
+
+validacion_fit <- fit_resamples(
+  object       = modelo_tree,
+  preprocessor = transformer,
+  resamples    = cv_folds,
+  metrics      = metric_set(rmse, mae),
+  control      = control_resamples(save_pred = TRUE)
+)
+
+head(validacion_fit)
+
+validacion_fit %>% 
+  collect_metrics(summarize = TRUE)
+
+validacion_fit %>%
+  collect_metrics(summarize = FALSE) %>% head()
+
+
+```
+
+
+```{r, validacion_graph, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE, fig.cap = "fitted vs Response", out.width='75%', fig.align="center"}
+
+ggplot(
+  data = validacion_fit %>% collect_metrics(summarize = FALSE),
+  aes(x = .estimate, fill = .metric)) +
+  geom_density(alpha = 0.5) +
+  theme_bw() 
+```
 
 
 
