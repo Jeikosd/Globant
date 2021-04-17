@@ -12,6 +12,7 @@ header-includes:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+# set.seed(123)
 ```
 
 ```{r, load_data, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE}
@@ -281,6 +282,9 @@ complete_data <- clean_data %>%
                                TRUE ~ "normal")) %>% 
   drop_na()
 
+complete_data %>% 
+  filter(row_number()==1 | row_number()==n()) %>% 
+  dplyr::select(date)
 
 ```
 
@@ -322,6 +326,8 @@ __Modelling Stages__
 The [Tidymodels](https://www.tidymodels.org) environment will be used for modeling development. Tidymodels is an interface that unifies under a single framework hundreds of functions from different packages, greatly facilitating all stages of preprocessing, training, optimization and validation of predictive models.
 
 ```{r, model_tree, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=T}
+
+set.seed(1234)
 
 split_inicial <- initial_split(
   data   = complete_data,
@@ -398,15 +404,43 @@ validacion_fit %>%
 ```
 
 
-```{r, validacion_graph, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE, fig.cap = "fitted vs Response", out.width='75%', fig.align="center"}
+```{r, validacion_graph, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE, fig.cap = "", out.width='77%', fig.align="center"}
 
-ggplot(
+p1 <- ggplot(
   data = validacion_fit %>% collect_metrics(summarize = FALSE),
   aes(x = .estimate, fill = .metric)) +
   geom_density(alpha = 0.5) +
   theme_bw() 
+
+p2 <- ggplot(
+  data = validacion_fit %>% collect_metrics(summarize = FALSE),
+  aes(x = .metric, y = .estimate, fill = .metric, color = .metric)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.1) +
+  geom_jitter(width = 0.05, alpha = 0.3) +
+  coord_flip() +
+  theme_bw() +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+
+ggarrange(p1, p2, nrow = 2, common.legend = TRUE, align = "v") %>% 
+  annotate_figure(
+    top = text_grob("Errors Distribution k-fold", size = 15)
+  )
 ```
 
+```{r, fitted_graph, cache=TRUE, eval=TRUE, message =FALSE, warning=FALSE, warning=FALSE, echo=FALSE, fig.cap = "fitted vs Response", out.width='77%', fig.align="center"}
 
+ajustados <- validacion_fit %>% collect_predictions(summarize = TRUE) 
+
+ggplot(
+  data = validacion_fit %>% collect_predictions(summarize = TRUE),
+  aes(x = ORIGINAL_GROSS_AMT, y = .pred)
+) +
+  geom_point(alpha = 0.3) +
+  geom_abline(slope = 1, intercept = 0, color = "firebrick") +
+  labs(title = "") +
+  theme_bw()
+```
+  
+It is possible to perform an analysis of extreme events as shown in the Figure \ref{fig:fitted_graph}, given that there are two large concentrations of the amount of money spent per transaction, amounts below 1000 and amounts around 3000. This implies that transactions above 3000 are unusual considering the whole history of transactions.
 
 ## References
