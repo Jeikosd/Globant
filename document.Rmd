@@ -437,10 +437,12 @@ ggplot(
 ) +
   geom_point(alpha = 0.3) +
   geom_abline(slope = 1, intercept = 0, color = "firebrick") +
+  geom_vline(xintercept = 90000)
   labs(title = "") +
-  theme_bw()
+  theme_bw()+
+  scale_y_continuous(labels = comma)
 ```
   
-It is possible to perform an analysis of extreme events as shown in the Figure \ref{fig:fitted_graph}, given that there are two large concentrations of the amount of money spent per transaction, amounts below 1000 and amounts around 3000. This implies that transactions above 3000 are unusual considering the whole history of transactions.
+It is possible to perform an analysis of extreme events as shown in the Figure \ref{fig:fitted_graph}, given that there are tre large concentrations of the amount of money spent per transaction, amounts below £1000 and amounts around £3000 and amounts around £90000. This implies that transactions above £90000 are unusual considering the whole history of transactions.
 
 ## References
